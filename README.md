@@ -160,6 +160,17 @@ See [Manual Deployment](https://github.com/Widen/cloudfront-auth/wiki/Manual-Dep
 
 Detailed instructions on testing your function can be found [in the Wiki](https://github.com/Widen/cloudfront-auth/wiki/Debug-&-Test).
 
+
+## Custom user callback
+
+If you need to perform additional actions after the user has been authenticated, you can create a custom callback function. This function will be called after the user has been authenticated and before the user is redirected back to the requested path. The custom callback function should be placed in in a dedicated javascript file and can be referenced when running the build script.
+
+```bash
+./build.sh custom_callback
+```
+
+
+
 ## Build Requirements
 
 * [npm](https://www.npmjs.com/) ^7.20.0
@@ -178,6 +189,17 @@ The supported values of `package` are:
 
 * `okta_native` - builds a generic Lambda package for OKTA Native authentication
 * `rotate_key_pair` - builds a Lambda package for rotating the RSA keys in AWS Secrets Manager
+
+## cli
+
+You may also run the build script with the `cli` argument to generate a CLI tool for generating JWTs.
+
+```bash
+node build/build.js "" --distribution=my-distribution --method=1  --callbackScript=usercallback/callback.js  --CLIENT_ID=my-client-id --CLIENT_SECRET=oidc_client_secret --REDIRECT_URI=https://.../callback --HD=domain --SESSION_DURATION=1 --AUTHZ=1
+```
+
+
+## release
 
 GitHub Actions automatically creates a new GitHub release when the repository owner pushes a tag that begins with `v`.
 

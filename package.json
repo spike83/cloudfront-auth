@@ -16,19 +16,21 @@
   "repository": "github:widen/cloudfront-auth",
   "license": "ISC",
   "dependencies": {
-    "axios": "^0.21.1",
-    "cookie": "^0.3.1",
+    "axios": "^1.7.7",
+    "cookie": "^1.0.1",
     "es6-dynamic-template": "^2.0.0",
-    "html-entities": "^2.4.0",
+    "html-entities": "^2.5.0",
     "jsonwebtoken": "^9.0.2",
     "jwk-to-pem": "^1.2.6",
     "nonce": "^1.0.4",
+    "optimist": "^0.6.1",
+    "prompts": "^2.4.2",
     "querystring": "^0.2.0",
-    "url": "^0.11.0"
+    "url": "^0.11.4"
   },
   "devDependencies": {
-    "aws-sdk-mock": "^5.8.0",
-    "mocha": "^9.2.2",
-    "sinon": "^9.0.2"
+    "aws-sdk-mock": "^6.2.0",
+    "mocha": "^10.7.3",
+    "sinon": "^19.0.2"
   }
 }

@@ -8,6 +8,7 @@ const nonce = require('./nonce.js');
 const axios = require('axios');
 const url = require('url');
 const entities = require('html-entities');
+const userCallback = require('./usercallback.js');
 
 var discoveryDocument;
 var jwks;
@@ -291,7 +292,7 @@ function mainProcess(event, context, callback) {
         }
       } else {
         console.log("Authorizing user.");
-        auth.isAuthorized(decoded, request, callback, unauthorized, internalServerError, config);
+        auth.isAuthorized(decoded, request, userCallback.handler(request,callback), unauthorized, internalServerError, config);
       }
     });
   } else {

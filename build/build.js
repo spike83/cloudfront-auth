@@ -5,6 +5,7 @@ const axios = require('axios');
 const colors = require('colors/safe');
 const url = require('url');
 const R = require('ramda');
+const optimist = require('optimist')
 
 var config = { AUTH_REQUEST: {}, TOKEN_REQUEST: {} };
 var oldConfig;
@@ -12,9 +13,11 @@ var oldConfig;
 config.DISTRIBUTION = process.argv[2]
 
 if (config.DISTRIBUTION) {
-  config.AUTHN = config.DISTRIBUTION.toUpperCase();
-  shell.mkdir('-p', 'distributions/' + config.DISTRIBUTION);
   switch (config.DISTRIBUTION) {
+    case 'okta_native':
+    case 'rotate_key_pair':
+      config.AUTHN = config.DISTRIBUTION.toUpperCase();
+      shell.mkdir('-p', 'distributions/' + config.DISTRIBUTION);
     case 'okta_native':
       genericOktaConfiguration();
       break;
@@ -22,15 +25,16 @@ if (config.DISTRIBUTION) {
       buildRotateKeyPair();
       break;
     default:
-      console.log(`Unsupported package name "${config.DISTRIBUTION}". Stopping build...`);
-      process.exit(1);
-  }
+      customConfiguration();
+    }
 } else {
   customConfiguration();
 }
 
 function customConfiguration() {
   prompt.message = colors.blue(">");
+  prompt.override = optimist.argv
+
   prompt.start();
   prompt.get({
     properties: {
@@ -40,9 +44,15 @@ function customConfiguration() {
       },
       method: {
         description: colors.red("Authentication methods:\n    (1) Google\n    (2) Microsoft\n    (3) GitHub\n    (4) OKTA\n    (5) Auth0\n    (6) Centrify\n    (7) OKTA Native\n\n    Select an authentication method")
+      },
+      callbackScript: {
+        message: colors.red("User callback script"),
+        required: false
       }
     }
   }, function (err, result) {
+    config.USER_CALLBACK = result.callbackScript || "usercallback/noop.js";
+    console.log("USER_CALLBACK " + config.USER_CALLBACK + "...");
     config.DISTRIBUTION = result.distribution;
     shell.mkdir('-p', 'distributions/' + config.DISTRIBUTION);
     if (fs.existsSync('distributions/' + config.DISTRIBUTION + '/config.json')) {
@@ -52,57 +62,59 @@ function customConfiguration() {
       shell.exec("ssh-keygen -t rsa -m PEM -b 4096 -f ./distributions/" + config.DISTRIBUTION + "/id_rsa -N ''");
       shell.exec("openssl rsa -in ./distributions/" + config.DISTRIBUTION + "/id_rsa -pubout -outform PEM -out ./distributions/" + config.DISTRIBUTION + "/id_rsa.pub");
     }
-    switch (result.method) {
-      case '1':
-        if (R.pathOr('', ['AUTHN'], oldConfig) != "GOOGLE") {
+      if (result.method == '1' || result.method == 'google') {
+          if (R.pathOr('', ['AUTHN'], oldConfig) != "GOOGLE") {
           oldConfig = undefined;
         }
         config.AUTHN = "GOOGLE";
         googleConfiguration();
-        break;
-      case '2':
+      }        
+      else if (result.method == '2' || result.method == 'microsoft') {
+      
         if (R.pathOr('', ['AUTHN'], oldConfig) != "MICROSOFT") {
           oldConfig = undefined;
         }
         config.AUTHN = "MICROSOFT";
         microsoftConfiguration();
-        break;
-      case '3':
+      }
+      else if (result.method == '3' || result.method == 'github') {
         if (R.pathOr('', ['AUTHN'], oldConfig) != "GITHUB") {
           oldConfig = undefined;
         }
         config.AUTHN = "GITHUB";
         githubConfiguration();
-        break;
-      case '4':
+      }
+      else if (result.method == '4' || result.method == 'okta') {
         if (R.pathOr('', ['AUTHN'], oldConfig) != "OKTA") {
           oldConfig = undefined;
         }
         config.AUTHN = "OKTA";
         oktaConfiguration();
-        break;
-      case '5':
+
+      }
+      else if (result.method == '5' || result.method == 'auth0') {
         if (R.pathOr('', ['AUTHN'], oldConfig) != "AUTH0") {
           oldConfig = undefined;
         }
         config.AUTHN = "AUTH0";
         auth0Configuration();
-        break;
-      case '6':
+      }
+      else if (result.method == '6' || result.method == 'centrify') {
+
         if (R.pathOr('', ['AUTHN'], oldConfig) != "CENTRIFY") {
           oldConfig = undefined;
         }
         config.AUTHN = "CENTRIFY";
         centrifyConfiguration();
-        break;
-      case '7':
+      }
+      else if (result.method == '7' || result.method == 'okta_native') {
+
         if (R.pathOr('', ['AUTHN'], oldConfig) != "OKTA_NATIVE") {
           oldConfig = undefined;
         }
         config.AUTHN = "OKTA_NATIVE";
         oktaConfiguration();
-        break;
-      default:
+      } else {
         console.log("Method not recognized. Stopping build...");
         process.exit(1);
     }
@@ -171,12 +183,10 @@ function microsoftConfiguration() {
 
     fs.writeFileSync('distributions/' + config.DISTRIBUTION + '/config.json', JSON.stringify(result, null, 4));
 
-    switch (result.AUTHZ) {
-      case '1':
+    if (result.AUTHZ == '1') {
         shell.cp('./authz/microsoft.js', './distributions/' + config.DISTRIBUTION + '/auth.js');
         writeConfig(config, zip, ['config.json', 'index.js', 'auth.js', 'nonce.js']);
-        break;
-      case '2':
+    } else if (result.AUTHZ == '2') {
         shell.cp('./authz/microsoft.json-username-lookup.js', './distributions/' + config.DISTRIBUTION + '/auth.js');
         prompt.start();
         prompt.message = colors.blue(">>>");
@@ -191,8 +201,7 @@ function microsoftConfiguration() {
           config.JSON_USERNAME_LOOKUP = result.JSON_USERNAME_LOOKUP;
           writeConfig(config, zip, ['config.json', 'index.js', 'auth.js', 'nonce.js']);
         });
-        break;
-      default:
+    } else {
         console.log("Method not recognized. Stopping build...");
     }
   });
@@ -261,13 +270,11 @@ function googleConfiguration() {
 
     fs.writeFileSync('distributions/' + config.DISTRIBUTION + '/config.json', JSON.stringify(result, null, 4));
 
-    switch (result.AUTHZ) {
-      case '1':
+    if (result.AUTHZ == '1') {
         shell.cp('./authz/google.hosted-domain.js', './distributions/' + config.DISTRIBUTION + '/auth.js');
         shell.cp('./nonce.js', './distributions/' + config.DISTRIBUTION + '/nonce.js');
         writeConfig(config, zip, ['config.json', 'index.js', 'auth.js', 'nonce.js']);
-        break;
-      case '2':
+    } else if (result.AUTHZ == '2') {
         shell.cp('./authz/google.json-email-lookup.js', './distributions/' + config.DISTRIBUTION + '/auth.js');
         prompt.start();
         prompt.message = colors.blue(">>>");
@@ -282,8 +289,7 @@ function googleConfiguration() {
           config.JSON_EMAIL_LOOKUP = result.JSON_EMAIL_LOOKUP;
           writeConfig(config, zip, ['config.json', 'index.js', 'auth.js', 'nonce.js']);
         });
-        break;
-      case '3':
+    } else if (result.AUTHZ == '3') {
         prompt.start();
         prompt.message = colors.blue(">>>");
         prompt.get({
@@ -305,8 +311,7 @@ function googleConfiguration() {
             }
           }
         });
-        break;
-      default:
+    } else {
         console.log("Method not recognized. Stopping build...");
     }
   });
@@ -664,6 +669,8 @@ function zip(files) {
 function writeConfig(result, callback, files) {
   fs.writeFile('distributions/' + config.DISTRIBUTION + '/config.json', JSON.stringify(result, null, 4), (err) => {
     if (err) throw err;
+    shell.cp(result.USER_CALLBACK, './distributions/' + config.DISTRIBUTION + '/usercallback.js');
+    files.push('usercallback.js');
     callback(files);
   });
 }
